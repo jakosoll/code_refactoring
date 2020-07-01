@@ -59,6 +59,25 @@ def flat(_list: list) -> list:
     return sum([list(item) for item in _list], [])
 
 
+def clear_magic_methods(func_list: list) -> list:
+    return [f for f in flat(func_list) if not (f.startswith('__') and f.endswith('__'))]
+
+
+def split_snake_case_name_to_words(name):
+    return [n for n in name.split('_') if is_verb(n)]
+
+
+def get_all_words_in_func(func_list: list) -> list:
+    return flat([split_snake_case_name_to_words(func_name) for func_name in func_list])
+
+
+def is_verb(word):
+    if not word:
+        return False
+    pos_info = pos_tag([word])
+    return pos_info[0][1] == 'VB'
+
+
 def main():
     pass
 

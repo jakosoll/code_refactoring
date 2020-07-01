@@ -49,8 +49,9 @@ def parse_ast(file_names: list, with_filenames=False, with_file_content=False):
     return trees
 
 
-def get_node_name(trees):
-    pass
+def get_node_name(trees: list) -> list:
+    print('functions extracted')
+    return [[node.name.lower() for node in ast.walk(t) if isinstance(node, ast.FunctionDef)] for t in trees]
 
 
 def flat(_list: list) -> list:

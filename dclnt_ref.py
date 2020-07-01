@@ -15,6 +15,23 @@ projects = [
 ]
 
 
+def get_filenames(path: str) -> list:
+    pass
+
+
+def parse_ast(file_names: list, with_filenames=False, with_file_content=False):
+    pass
+
+
+def get_node_name(trees):
+    pass
+
+
+def flat(_list: list) -> list:
+    """ [(1,2), (3,4)] -> [1, 2, 3, 4]"""
+    return sum([list(item) for item in _list], [])
+
+
 def main():
     pass
 

@@ -78,8 +78,26 @@ def is_verb(word):
     return pos_info[0][1] == 'VB'
 
 
+def get_top_verbs(verbs: Union[list, str], top_size: int = 10) -> list:
+    return collections.Counter(verbs).most_common(top_size)
+
+
 def main():
-    pass
+    top_verbs = []
+    for project in projects:
+        path = os.path.join('.', project)
+        file_names = get_filenames(path)
+        if not file_names:
+            continue
+        trees = parse_ast(file_names)
+        func_list: list = get_node_name(trees)
+        clear_func_list: list = clear_magic_methods(func_list)
+        func_words_list: list = get_all_words_in_func(clear_func_list)
+        top_verbs.extend(get_top_verbs(func_words_list))
+    # print(top_verbs)
+    print(f'total {len(top_verbs)} words, {len(set(top_verbs))} is unique')
+    for word, occurence in sorted(get_top_verbs(top_verbs, top_size=200), key=lambda item: item[1]):
+        print(word, occurence)
 
 
 if __name__ == "__main__":

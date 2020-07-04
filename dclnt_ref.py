@@ -4,6 +4,7 @@ import collections
 import argparse
 from typing import Union
 from nltk import pos_tag
+from git import Repo
 
 projects = [
     'django',
@@ -16,6 +17,11 @@ projects = [
 
 
 def get_filenames(path: str) -> list:
+    """
+
+    :param path:
+    :return: list of '.py' file names:
+    """
     file_names = []
     for dirname, dirs, files in os.walk(path, topdown=True):
         for file in files:
@@ -87,42 +93,73 @@ class ArgParser:
         p = argparse.ArgumentParser()
         p.add_argument(
             "-g",
-            "--github",
-            help="--github allows to clone repo from github",
+            "--git",
+            nargs=2,
+            help="--git allows to clone git repo. Usage: '-g url path'",
             type=str,
-            dest="github"
+            dest="git"
         )
         p.add_argument(
             "-o",
             "--output",
-            help="--output define type of output file: csv, or xls",
+            help="--output define type of output file: 'csv', or 'xls'",
             type=str,
             dest="output"
         )
+        p.add_argument(
+            "-w",
+            "--words",
+            help="Allows to choice type of searching words: noun or verb",
+            choices=[
+                'noun',
+                'verb'
+            ],
+            default='verb',
+            type=str,
+            dest="type_words"
+        )
+        p.add_argument(
+            "-n",
+            "--names",
+            help="Allows to choice type of searching objects: func or vars",
+            choices=[
+                "func",
+                "vars"
+            ],
+            default="func"
+        )
         args = p.parse_args()
-        self.github = args.github
-        self.output = args.output.lower()
+        self.git = args.git
+        self.output = args.output
+        self.type_words = args.type_words
 
-        assert not self.output or self.output == 'xls' or self.output == 'csv', 'Error extensions type'
+        assert not self.output or self.output == 'xls' or self.output == 'csv', "Error extensions type! Use 'xls' or 'csv'"
+
+        def _check_path(path: str) -> bool:
+            return os.path.exists(path)
+        if self.git:
+            assert not _check_path(self.git[1]), f'Error, Directory {self.git[1]} exists!'
+
+
+def clone_repo(git_url: str, path=None):
+    if not path:
+        path = os.path.join('.')
+    repo = Repo.clone_from(git_url, path)
+    return repo
 
 
 def main():
-    p = ArgParser()
-    if p.github:
-        pass
-    if p.output:
-        pass
     top_verbs = []
-    for project in projects:
-        path = os.path.join('.', project)
-        file_names = get_filenames(path)
-        if not file_names:
-            continue
-        trees = parse_ast(file_names)
-        func_list: list = get_node_name(trees)
-        clear_func_list: list = clear_magic_methods(func_list)
-        func_words_list: list = get_all_words_in_func(clear_func_list)
-        top_verbs.extend(get_top_verbs(func_words_list))
+    path = 'sqlalchemy'  # testing path
+    path = os.path.join('.', path)
+    file_names = get_filenames(path)
+    # if not file_names:
+    #     continue
+    trees = parse_ast(file_names)
+    func_list: list = get_node_name(trees)
+    clear_func_list: list = clear_magic_methods(func_list)
+    func_words_list: list = get_all_words_in_func(clear_func_list)
+    top_verbs.extend(get_top_verbs(func_words_list))
     # print(top_verbs)
     print(f'total {len(top_verbs)} words, {len(set(top_verbs))} is unique')
     for word, occurence in sorted(get_top_verbs(top_verbs, top_size=200), key=lambda item: item[1]):

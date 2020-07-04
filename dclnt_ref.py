@@ -1,8 +1,8 @@
 import ast
 import os
 import collections
+import argparse
 from typing import Union
-
 from nltk import pos_tag
 
 projects = [
@@ -82,7 +82,36 @@ def get_top_verbs(verbs: Union[list, str], top_size: int = 10) -> list:
     return collections.Counter(verbs).most_common(top_size)
 
 
+class ArgParser:
+    def __init__(self):
+        p = argparse.ArgumentParser()
+        p.add_argument(
+            "-g",
+            "--github",
+            help="--github allows to clone repo from github",
+            type=str,
+            dest="github"
+        )
+        p.add_argument(
+            "-o",
+            "--output",
+            help="--output define type of output file: csv, or xls",
+            type=str,
+            dest="output"
+        )
+        args = p.parse_args()
+        self.github = args.github
+        self.output = args.output.lower()
+
+        assert not self.output or self.output == 'xls' or self.output == 'csv', 'Error extensions type'
+
+
 def main():
+    p = ArgParser()
+    if p.github:
+        pass
+    if p.output:
+        pass
     top_verbs = []
     for project in projects:
         path = os.path.join('.', project)
@@ -102,4 +131,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

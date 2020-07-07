@@ -5,7 +5,6 @@ import argparse
 from typing import Union
 from nltk import pos_tag
 from git import Repo
-import pprint
 
 projects = [
     'django',
@@ -31,7 +30,7 @@ class ArgParser:
         p.add_argument(
             "-o",
             "--output",
-            help="--output define type of output file: 'csv', or 'xls'",
+            help="--output define type of output file: 'csv', or 'json'",
             type=str,
             dest="output"
         )
@@ -59,12 +58,13 @@ class ArgParser:
             dest="type_names"
         )
         args = p.parse_args()
-        self.git = args.git
+        self.git: list = args.git
         self.output = args.output
         self.type_words = args.type_words
         self.type_names = args.type_names
 
-        assert not self.output or self.output == 'xls' or self.output == 'csv', "Error extensions type! Use 'xls' or 'csv'"
+        assert not self.output or self.output == 'json' or self.output == 'csv', "Error extensions type! Use 'json' or 'csv'"
+        assert not self.git or self.git[0].endswith('.git'), "Error '-g' attribute, link must ends with 'git'"
 
         def _check_path(path: str) -> bool:
             return os.path.exists(path)
@@ -115,12 +115,12 @@ def get_filenames(path: str) -> list:
     :return: list of '.py' file names:
     """
     file_names = []
-    for dirname, dirs, files in os.walk(path, topdown=True):
+    for dir_name, dirs, files in os.walk(path, topdown=True):
         for file in files:
+            if len(file_names) == 100:
+                break
             if file.endswith('.py'):
-                file_names.append(os.path.join(dirname, file))
-                if len(file_names) == 100:
-                    break
+                file_names.append(os.path.join(dir_name, file))
     if file_names:
         print('total %s files' % len(file_names))
     return file_names

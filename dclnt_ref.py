@@ -17,85 +17,6 @@ projects = [
 ]
 
 
-def get_filenames(path: str) -> list:
-    """
-
-    :param path:
-    :return: list of '.py' file names:
-    """
-    file_names = []
-    for dirname, dirs, files in os.walk(path, topdown=True):
-        for file in files:
-            if file.endswith('.py'):
-                file_names.append(os.path.join(dirname, file))
-                if len(file_names) == 100:
-                    break
-    if file_names:
-        print('total %s files' % len(file_names))
-    return file_names
-
-
-def parse_ast(file_names: list, with_filenames=False, with_file_content=False):
-    trees = []
-    for filename in file_names:
-        with open(filename, 'r', encoding='utf-8') as attempt_handler:
-            main_file_content = attempt_handler.read()
-        try:
-            tree = ast.parse(main_file_content)
-        except SyntaxError as e:
-            print(e)
-            tree = None
-        if with_filenames:
-            if with_file_content:
-                trees.append((filename, main_file_content, tree))
-            else:
-                trees.append((filename, tree))
-        else:
-            trees.append(tree)
-    print('trees generated')
-    return trees
-
-
-def get_func_name(trees: list) -> list:
-    """
-    проходим по каждому ast дереву, и проходим по листьям
-    если листья являеются фунцией, то получаем ее имя в нижнем регистре и добавляем в список
-    :param trees:
-    :return list of func's name:
-    """
-    print('functions extracted')
-    return [[node.name.lower() for node in ast.walk(t) if isinstance(node, ast.FunctionDef)] for t in trees]
-
-
-def flat(_list: list) -> list:
-    """ [(1,2), (3,4)] -> [1, 2, 3, 4]"""
-    return sum([list(item) for item in _list], [])
-
-
-def clear_magic_methods(func_list: list) -> list:
-    return [f for f in flat(func_list) if not (f.startswith('__') and f.endswith('__'))]
-
-
-def split_snake_case_name_to_words(name):
-    return [n for n in name.split('_') if n]
-
-
-def get_all_words_in_func(func_list: list) -> list:
-    return flat([split_snake_case_name_to_words(func_name) for func_name in func_list])
-
-
-def get_part_of_speech(word, type_words):
-    if type_words == 'noun':
-        type_words = 'NN'
-    elif type_words == 'verb':
-        type_words = 'VB'
-    return [w for w in word if pos_tag([w])[0][1] == type_words]
-
-
-def get_top_verbs(verbs: Union[list, str], top_size: int = 10) -> list:
-    return collections.Counter(verbs).most_common(top_size)
-
-
 class ArgParser:
     def __init__(self):
         p = argparse.ArgumentParser()
@@ -134,12 +55,14 @@ class ArgParser:
                 "func",
                 "vars"
             ],
-            default="func"
+            default="func",
+            dest="type_names"
         )
         args = p.parse_args()
         self.git = args.git
         self.output = args.output
         self.type_words = args.type_words
+        self.type_names = args.type_names
 
         assert not self.output or self.output == 'xls' or self.output == 'csv', "Error extensions type! Use 'xls' or 'csv'"
 
@@ -147,6 +70,89 @@ class ArgParser:
             return os.path.exists(path)
         if self.git:
             assert not _check_path(self.git[1]), f'Error, Directory {self.git[1]} exists!'
+
+
+class AstParser:
+    def __init__(self, file_names):
+        self.file_names = file_names
+        self.trees = []
+
+    def _parse_ast(self, file_names: list, with_filenames=False, with_file_content=False):
+        trees = []
+        for filename in file_names:
+            with open(filename, 'r', encoding='utf-8') as attempt_handler:
+                main_file_content = attempt_handler.read()
+            try:
+                tree = ast.parse(main_file_content)
+            except SyntaxError as e:
+                print(e)
+                tree = None
+            if with_filenames:
+                if with_file_content:
+                    trees.append((filename, main_file_content, tree))
+                else:
+                    trees.append((filename, tree))
+            else:
+                trees.append(tree)
+        print('trees generated')
+        return trees
+
+    def get_func_name(self):
+        self.trees = self._parse_ast(self.file_names)
+        print('functions extracted')
+        return [[node.name.lower() for node in ast.walk(t) if isinstance(node, ast.FunctionDef)] for t in self.trees]
+
+    def get_vars_name(self):
+        self.trees = self._parse_ast(self.file_names)
+        print('vars extracted')
+        return [[node.attr.lower() for node in ast.walk(t) if isinstance(node, ast.Attribute)] for t in self.trees]
+
+
+def get_filenames(path: str) -> list:
+    """
+
+    :param path:
+    :return: list of '.py' file names:
+    """
+    file_names = []
+    for dirname, dirs, files in os.walk(path, topdown=True):
+        for file in files:
+            if file.endswith('.py'):
+                file_names.append(os.path.join(dirname, file))
+                if len(file_names) == 100:
+                    break
+    if file_names:
+        print('total %s files' % len(file_names))
+    return file_names
+
+
+def flat(_list: list) -> list:
+    """ [(1,2), (3,4)] -> [1, 2, 3, 4]"""
+    return sum([list(item) for item in _list], [])
+
+
+def clear_magic_methods(func_list: list) -> list:
+    return [f for f in flat(func_list) if not (f.startswith('__') and f.endswith('__'))]
+
+
+def split_snake_case_name_to_words(name):
+    return [n for n in name.split('_') if n]
+
+
+def get_all_words_in_func(func_list: list) -> list:
+    return flat([split_snake_case_name_to_words(func_name) for func_name in func_list])
+
+
+def get_part_of_speech(word, type_words):
+    if type_words == 'noun':
+        type_words = 'NN'
+    elif type_words == 'verb':
+        type_words = 'VB'
+    return [w for w in word if pos_tag([w])[0][1] == type_words]
+
+
+def get_top_verbs(verbs: Union[list, str], top_size: int = 10) -> list:
+    return collections.Counter(verbs).most_common(top_size)
 
 
 def clone_repo(git_url: str, path=None):
@@ -162,13 +168,16 @@ def main():
     path = 'sqlalchemy'  # testing path
     path = os.path.join('.', path)
     file_names = get_filenames(path)  # получаем список файлов в директории
-    trees = parse_ast(file_names)  # получаем список ast деревьев функций в каждом файле
-    func_list: list = get_func_name(trees)
+    a = AstParser(file_names)  # получаем список ast деревьев функций в каждом файле
+    if p.type_names == 'vars':
+        names_list = a.get_vars_name()
+    else:
+        names_list = a.get_func_name()
     # pprint.pprint(func_list)
-    clear_func_list: list = clear_magic_methods(func_list)
-    func_words_list: list = get_all_words_in_func(clear_func_list)
+    clear_names_list: list = clear_magic_methods(names_list)
+    dirty_words_list: list = get_all_words_in_func(clear_names_list)
     # pprint.pprint(func_words_list)
-    words_list = get_part_of_speech(func_words_list, p.type_words)
+    words_list = get_part_of_speech(dirty_words_list, p.type_words)
     top_verbs.extend(get_top_verbs(words_list))
     # # print(top_verbs)
     print(f'total {len(top_verbs)} words, {len(set(top_verbs))} is unique')

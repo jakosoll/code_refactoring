@@ -5,6 +5,7 @@ from nltk import pos_tag
 from git import Repo
 from parsers import ArgParser
 from parsers import AstParser
+import shutil
 
 
 def get_filenames(path: str) -> list:
@@ -58,15 +59,18 @@ def clone_repo(git_url: str, path=None):
     if not path:
         path = os.path.join('.')
     repo = Repo.clone_from(git_url, path)
+    print('Repo cloned')
     return repo
 
 
 def main():
     p = ArgParser()
     top_verbs = []
-    # if p.git:
-    #     clone_repo(*p.git)
+    response_del_repo = ''
     path = 'sqlalchemy'  # testing path
+    if p.git:
+        path = clone_repo(*p.git).git_dir.rstrip('.git')
+        response_del_repo = input('Delete repo after scan files? [Y|N]: ').upper()
     path = os.path.join('.', path)
     file_names = get_filenames(path)  # получаем список файлов в директории
     a = AstParser(file_names)  # получаем список ast деревьев функций в каждом файле
@@ -74,6 +78,11 @@ def main():
         names_list = a.get_vars_name()
     else:
         names_list = a.get_func_name()
+    if response_del_repo == 'Y':
+        print('files will delete...')
+        shutil.rmtree(path)
+    else:
+        print('Repo still living on your hard drive!')
     clear_names_list: list = clear_magic_methods(names_list)
     dirty_words_list: list = get_all_words_in_func(clear_names_list)
     words_list = get_part_of_speech(dirty_words_list, p.type_words)

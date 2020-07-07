@@ -5,6 +5,7 @@ import argparse
 from typing import Union
 from nltk import pos_tag
 from git import Repo
+import pprint
 
 projects = [
     'django',
@@ -55,7 +56,13 @@ def parse_ast(file_names: list, with_filenames=False, with_file_content=False):
     return trees
 
 
-def get_node_name(trees: list) -> list:
+def get_func_name(trees: list) -> list:
+    """
+    проходим по каждому ast дереву, и проходим по листьям
+    если листья являеются фунцией, то получаем ее имя в нижнем регистре и добавляем в список
+    :param trees:
+    :return list of func's name:
+    """
     print('functions extracted')
     return [[node.name.lower() for node in ast.walk(t) if isinstance(node, ast.FunctionDef)] for t in trees]
 
@@ -70,18 +77,19 @@ def clear_magic_methods(func_list: list) -> list:
 
 
 def split_snake_case_name_to_words(name):
-    return [n for n in name.split('_') if is_verb(n)]
+    return [n for n in name.split('_') if n]
 
 
 def get_all_words_in_func(func_list: list) -> list:
     return flat([split_snake_case_name_to_words(func_name) for func_name in func_list])
 
 
-def is_verb(word):
-    if not word:
-        return False
-    pos_info = pos_tag([word])
-    return pos_info[0][1] == 'VB'
+def get_part_of_speech(word, type_words):
+    if type_words == 'noun':
+        type_words = 'NN'
+    elif type_words == 'verb':
+        type_words = 'VB'
+    return [w for w in word if pos_tag([w])[0][1] == type_words]
 
 
 def get_top_verbs(verbs: Union[list, str], top_size: int = 10) -> list:
@@ -149,18 +157,20 @@ def clone_repo(git_url: str, path=None):
 
 
 def main():
+    p = ArgParser()
     top_verbs = []
     path = 'sqlalchemy'  # testing path
     path = os.path.join('.', path)
-    file_names = get_filenames(path)
-    # if not file_names:
-    #     continue
-    trees = parse_ast(file_names)
-    func_list: list = get_node_name(trees)
+    file_names = get_filenames(path)  # получаем список файлов в директории
+    trees = parse_ast(file_names)  # получаем список ast деревьев функций в каждом файле
+    func_list: list = get_func_name(trees)
+    # pprint.pprint(func_list)
     clear_func_list: list = clear_magic_methods(func_list)
     func_words_list: list = get_all_words_in_func(clear_func_list)
-    top_verbs.extend(get_top_verbs(func_words_list))
-    # print(top_verbs)
+    # pprint.pprint(func_words_list)
+    words_list = get_part_of_speech(func_words_list, p.type_words)
+    top_verbs.extend(get_top_verbs(words_list))
+    # # print(top_verbs)
     print(f'total {len(top_verbs)} words, {len(set(top_verbs))} is unique')
     for word, occurence in sorted(get_top_verbs(top_verbs, top_size=200), key=lambda item: item[1]):
         print(word, occurence)

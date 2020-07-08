@@ -4,6 +4,7 @@ import collections
 import os
 import json
 from typing import Union
+from datetime import datetime
 
 
 class ArgParser:
@@ -105,7 +106,8 @@ def _get_top_verbs(verbs: Union[list, str], top_size: int = 10) -> list:
 class OutHandler:
     def __init__(self, output_args: [str, None], words: list):
         self.output_args = output_args
-        self.sorted_words = sorted(_get_top_verbs(words, top_size=200), key=lambda item: item[1])
+        self.sorted_words = dict(sorted(_get_top_verbs(words, top_size=200), key=lambda item: item[1], reverse=True))
+        self.output_name = datetime.now().strftime("%Y-%m-%d_%H:%m:%S")
 
     def _check_output(self):
         if self.output_args == 'json':
@@ -116,17 +118,24 @@ class OutHandler:
             self._display_console()
 
     def _save_json(self):
-        print('save json file...')
+        self._print()
+        with open(f'output{self.output_name}.json', 'w') as file:
+            json.dump(self.sorted_words, file)
 
     def _save_csv(self):
-        print('save csv file...')
+        self._print()
 
     def _display_console(self):
-        for word, in self.sorted_words:
-            print(word)
+        # print(self.sorted_words)
+        # print('\n'.join(self.sorted_words))
+        for k, v in self.sorted_words.items():
+            print(f"'{k}': {v} time(s)")
 
     def __str__(self):
         return f'total {len(self.sorted_words)} words, {len(set(self.sorted_words))} is unique'
+
+    def _print(self):
+        print(f'save results in {self.output_args} file...')
 
     def output(self):
         self._check_output()

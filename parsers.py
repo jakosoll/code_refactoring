@@ -1,6 +1,10 @@
 import argparse
 import ast
+import collections
 import os
+import json
+from typing import Union
+
 
 class ArgParser:
     def __init__(self):
@@ -92,3 +96,37 @@ class AstParser:
         self.trees = self._parse_ast(self.file_names)
         print('vars extracted')
         return [[node.attr.lower() for node in ast.walk(t) if isinstance(node, ast.Attribute)] for t in self.trees]
+
+
+def _get_top_verbs(verbs: Union[list, str], top_size: int = 10) -> list:
+    return collections.Counter(verbs).most_common(top_size)
+
+
+class OutHandler:
+    def __init__(self, output_args: [str, None], words: list):
+        self.output_args = output_args
+        self.sorted_words = sorted(_get_top_verbs(words, top_size=200), key=lambda item: item[1])
+
+    def _check_output(self):
+        if self.output_args == 'json':
+            self._save_json()
+        elif self.output_args == 'csv':
+            self._save_csv()
+        else:
+            self._display_console()
+
+    def _save_json(self):
+        print('save json file...')
+
+    def _save_csv(self):
+        print('save csv file...')
+
+    def _display_console(self):
+        for word, in self.sorted_words:
+            print(word)
+
+    def __str__(self):
+        return f'total {len(self.sorted_words)} words, {len(set(self.sorted_words))} is unique'
+
+    def output(self):
+        self._check_output()

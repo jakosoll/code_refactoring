@@ -5,6 +5,7 @@ from nltk import pos_tag
 from git import Repo
 from parsers import ArgParser
 from parsers import AstParser
+from parsers import OutHandler
 import shutil
 
 
@@ -51,9 +52,6 @@ def get_part_of_speech(word, type_words):
     return [w for w in word if pos_tag([w])[0][1] == type_words]
 
 
-def get_top_verbs(verbs: Union[list, str], top_size: int = 10) -> list:
-    return collections.Counter(verbs).most_common(top_size)
-
 
 def clone_repo(git_url: str, path=None):
     if not path:
@@ -65,12 +63,14 @@ def clone_repo(git_url: str, path=None):
 
 def main():
     p = ArgParser()
-    top_verbs = []
     response_del_repo = ''
     path = 'sqlalchemy'  # testing path
     if p.git:
         path = clone_repo(*p.git).git_dir.rstrip('.git')
         response_del_repo = input('Delete repo after scan files? [Y|N]: ').upper()
+    else:
+        print('Function will searched on current folder and sub-folders')
+        path = ''
     path = os.path.join('.', path)
     file_names = get_filenames(path)  # получаем список файлов в директории
     a = AstParser(file_names)  # получаем список ast деревьев функций в каждом файле
@@ -78,18 +78,23 @@ def main():
         names_list = a.get_vars_name()
     else:
         names_list = a.get_func_name()
-    if response_del_repo == 'Y':
+    if response_del_repo == 'Y' and p.git:
         print('files will delete...')
         shutil.rmtree(path)
-    else:
+    elif response_del_repo != 'Y' and p.git:
         print('Repo still living on your hard drive!')
     clear_names_list: list = clear_magic_methods(names_list)
     dirty_words_list: list = get_all_words_in_func(clear_names_list)
     words_list = get_part_of_speech(dirty_words_list, p.type_words)
-    top_verbs.extend(get_top_verbs(words_list))
-    print(f'total {len(top_verbs)} words, {len(set(top_verbs))} is unique')
-    for word, occurence in sorted(get_top_verbs(top_verbs, top_size=200), key=lambda item: item[1]):
-        print(word, occurence)
+    output = OutHandler(p.output, words_list)
+    print(output)
+    output.output()
+    # top_verbs.extend(get_top_verbs(words_list))
+    #
+    # if not p.output:
+    #     print('')
+    #     for word, occurence in sorted(get_top_verbs(top_verbs, top_size=200), key=lambda item: item[1]):
+    #         print(*word)
 
 
 if __name__ == "__main__":
